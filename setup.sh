@@ -1,33 +1,30 @@
 #!/bin/bash
 
-# Update & install dependencies
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y x11vnc xvfb wget curl lxde
+# Update system and install required packages
+echo "Updating system..."
+sudo apt update && sudo apt install -y xfce4 xfce4-goodies tightvncserver novnc websockify
 
-# Install Waydroid
-echo "Installing Waydroid..."
-sudo add-apt-repository ppa:waydroid-dev/waydroid -y
-sudo apt update
-sudo apt install -y waydroid
+# Set up VNC password
+echo "Setting up VNC password..."
+echo "vncpassword" | vncpasswd -f > ~/.vnc/passwd
+chmod 600 ~/.vnc/passwd
 
-# Initialize Waydroid
-echo "Initializing Waydroid..."
-sudo waydroid init
+# Configure VNC to use XFCE
+echo "Configuring VNC..."
+echo "#!/bin/bash
+xrdb $HOME/.Xresources
+startxfce4 &" > ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
 
-# Start Waydroid container
-echo "Starting Waydroid container..."
-sudo systemctl start waydroid-container
-
-# Launch Waydroid session
-echo "Launching Waydroid session..."
-waydroid session start &
-sleep 10
-
-# Start LXDE Desktop & VNC Server
+# Start VNC server
 echo "Starting VNC server..."
-xvfb-run startlxde &
-x11vnc -display :0 -forever -passwd android -create &
+vncserver :1 -geometry 1280x720 -depth 24
 
-# Output VNC connection details
-echo "VNC Server is running."
-echo "Connect using: localhost:5900 with password 'android'"
+# Run NoVNC to access VNC in browser
+echo "Starting NoVNC..."
+websockify --web=/usr/share/novnc/ 6080 localhost:5901 &
+
+# Keep the session alive
+echo "Setup complete! Access VNC at:"
+echo "http://localhost:6080"
+tmux new-session -d -s vnc 'while true; do sleep 1000; done'
